@@ -1,0 +1,1014 @@
+const bcrypt = require('bcrypt');
+const Admin = require('../models/adminSchema.js');
+const Sclass = require('../models/sclassSchema.js');
+const Student = require('../models/studentSchema.js');
+const Teacher = require('../models/teacherSchema.js');
+const Subject = require('../models/subjectSchema.js');
+const Notice = require('../models/noticeSchema.js');
+const Complain = require('../models/complainSchema.js');
+
+// const adminRegister = async (req, res) => {
+//     try {
+//         const salt = await bcrypt.genSalt(10);
+//         const hashedPass = await bcrypt.hash(req.body.password, salt);
+
+//         const admin = new Admin({
+//             ...req.body,
+//             password: hashedPass
+//         });
+
+//         const existingAdminByEmail = await Admin.findOne({ email: req.body.email });
+//         const existingSchool = await Admin.findOne({ schoolName: req.body.schoolName });
+
+//         if (existingAdminByEmail) {
+//             res.send({ message: 'Email already exists' });
+//         }
+//         else if (existingSchool) {
+//             res.send({ message: 'School name already exists' });
+//         }
+//         else {
+//             let result = await admin.save();
+//             result.password = undefined;
+//             res.send(result);
+//         }
+//     } catch (err) {
+//         res.status(500).json(err);
+//     }
+// };
+
+// const adminLogIn = async (req, res) => {
+//     if (req.body.email && req.body.password) {
+//         let admin = await Admin.findOne({ email: req.body.email });
+//         if (admin) {
+//             const validated = await bcrypt.compare(req.body.password, admin.password);
+//             if (validated) {
+//                 admin.password = undefined;
+//                 res.send(admin);
+//             } else {
+//                 res.send({ message: "Invalid password" });
+//             }
+//         } else {
+//             res.send({ message: "User not found" });
+//         }
+//     } else {
+//         res.send({ message: "Email and password are required" });
+//     }
+// };
+
+const adminRegister = async (req, res) => {
+    try {
+        const admin = new Admin({
+            ...req.body
+        });
+
+        const existingAdminByEmail = await Admin.findOne({ email: req.body.email });
+        const existingSchool = await Admin.findOne({ schoolName: req.body.schoolName });
+
+        if (existingAdminByEmail) {
+            res.send({ message: 'Email already exists' });
+        }
+        else if (existingSchool) {
+            res.send({ message: 'School name already exists' });
+        }
+        else {
+            let result = await admin.save();
+            result.password = undefined;
+            res.send(result);
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const adminLogIn = async (req, res) => {
+    if (req.body.email && req.body.password) {
+        let admin = await Admin.findOne({ email: req.body.email });
+        if (admin) {
+            if (req.body.password === admin.password) {
+                admin.password = undefined;
+                res.send(admin);
+            } else {
+                res.send({ message: "Invalid password" });
+            }
+        } else {
+            res.send({ message: "User not found" });
+        }
+    } else {
+        res.send({ message: "Email and password are required" });
+    }
+};
+
+const getAdminDetail = async (req, res) => {
+    try {
+        let admin = await Admin.findById(req.params.id);
+        if (admin) {
+            admin.password = undefined;
+            res.send(admin);
+        }
+        else {
+            res.send({ message: "No admin found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteAdmin = async (req, res) => {
+    try {
+        const result = await Admin.findByIdAndDelete(req.params.id)
+
+        await Sclass.deleteMany({ school: req.params.id });
+        await Student.deleteMany({ school: req.params.id });
+        await Teacher.deleteMany({ school: req.params.id });
+        await Subject.deleteMany({ school: req.params.id });
+        await Notice.deleteMany({ school: req.params.id });
+        await Complain.deleteMany({ school: req.params.id });
+
+        res.send(result)
+    } catch (error) {
+        res.status(500).json(err);
+    }
+}
+
+const updateAdmin = async (req, res) => {
+    try {
+        if (req.body.password) {
+            const salt = await bcrypt.genSalt(10);
+            req.body.password = await bcrypt.hash(req.body.password, salt);
+        }
+        let result = await Admin.findByIdAndUpdate(req.params.id,
+            { $set: req.body },
+            { new: true });
+
+        result.password = undefined;
+        res.send(result);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
+// module.exports = { adminRegister, adminLogIn, getAdminDetail, deleteAdmin,  };
+
+module.exports = { adminRegister, adminLogIn, getAdminDetail, updateAdmin, deleteAdmin };
+
+
+const Sclass = require('../models/sclassSchema.js');
+const Student = require('../models/studentSchema.js');
+const Subject = require('../models/subjectSchema.js');
+const Teacher = require('../models/teacherSchema.js');
+
+const sclassCreate = async (req, res) => {
+    try {
+        const sclass = new Sclass({
+            sclassName: req.body.sclassName,
+            school: req.body.adminID
+        });
+
+        const existingSclassByName = await Sclass.findOne({
+            sclassName: req.body.sclassName,
+            school: req.body.adminID
+        });
+
+        if (existingSclassByName) {
+            res.send({ message: 'Sorry this class name already exists' });
+        }
+        else {
+            const result = await sclass.save();
+            res.send(result);
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const sclassList = async (req, res) => {
+    try {
+        let sclasses = await Sclass.find({ school: req.params.id })
+        if (sclasses.length > 0) {
+            res.send(sclasses)
+        } else {
+            res.send({ message: "No sclasses found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const getSclassDetail = async (req, res) => {
+    try {
+        let sclass = await Sclass.findById(req.params.id);
+        if (sclass) {
+            sclass = await sclass.populate("school", "schoolName")
+            res.send(sclass);
+        }
+        else {
+            res.send({ message: "No class found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+}
+
+const getSclassStudents = async (req, res) => {
+    try {
+        let students = await Student.find({ sclassName: req.params.id })
+        if (students.length > 0) {
+            let modifiedStudents = students.map((student) => {
+                return { ...student._doc, password: undefined };
+            });
+            res.send(modifiedStudents);
+        } else {
+            res.send({ message: "No students found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteSclass = async (req, res) => {
+    try {
+        const deletedClass = await Sclass.findByIdAndDelete(req.params.id);
+        if (!deletedClass) {
+            return res.send({ message: "Class not found" });
+        }
+        const deletedStudents = await Student.deleteMany({ sclassName: req.params.id });
+        const deletedSubjects = await Subject.deleteMany({ sclassName: req.params.id });
+        const deletedTeachers = await Teacher.deleteMany({ teachSclass: req.params.id });
+        res.send(deletedClass);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+}
+
+const deleteSclasses = async (req, res) => {
+    try {
+        const deletedClasses = await Sclass.deleteMany({ school: req.params.id });
+        if (deletedClasses.deletedCount === 0) {
+            return res.send({ message: "No classes found to delete" });
+        }
+        const deletedStudents = await Student.deleteMany({ school: req.params.id });
+        const deletedSubjects = await Subject.deleteMany({ school: req.params.id });
+        const deletedTeachers = await Teacher.deleteMany({ school: req.params.id });
+        res.send(deletedClasses);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+}
+
+
+module.exports = { sclassCreate, sclassList, deleteSclass, deleteSclasses, getSclassDetail, getSclassStudents };
+
+const Complain = require('../models/complainSchema.js');
+
+const complainCreate = async (req, res) => {
+    try {
+        const complain = new Complain(req.body)
+        const result = await complain.save()
+        res.send(result)
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const complainList = async (req, res) => {
+    try {
+        let complains = await Complain.find({ school: req.params.id }).populate("user", "name");
+        if (complains.length > 0) {
+            res.send(complains)
+        } else {
+            res.send({ message: "No complains found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+module.exports = { complainCreate, complainList };
+
+const Notice = require('../models/noticeSchema.js');
+
+const noticeCreate = async (req, res) => {
+    try {
+        const notice = new Notice({
+            ...req.body,
+            school: req.body.adminID
+        })
+        const result = await notice.save()
+        res.send(result)
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const noticeList = async (req, res) => {
+    try {
+        let notices = await Notice.find({ school: req.params.id })
+        if (notices.length > 0) {
+            res.send(notices)
+        } else {
+            res.send({ message: "No notices found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const updateNotice = async (req, res) => {
+    try {
+        const result = await Notice.findByIdAndUpdate(req.params.id,
+            { $set: req.body },
+            { new: true })
+        res.send(result)
+    } catch (error) {
+        res.status(500).json(error);
+    }
+}
+
+const deleteNotice = async (req, res) => {
+    try {
+        const result = await Notice.findByIdAndDelete(req.params.id)
+        res.send(result)
+    } catch (error) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteNotices = async (req, res) => {
+    try {
+        const result = await Notice.deleteMany({ school: req.params.id })
+        if (result.deletedCount === 0) {
+            res.send({ message: "No notices found to delete" })
+        } else {
+            res.send(result)
+        }
+    } catch (error) {
+        res.status(500).json(err);
+    }
+}
+
+module.exports = { noticeCreate, noticeList, updateNotice, deleteNotice, deleteNotices };
+
+const bcrypt = require('bcrypt');
+const Student = require('../models/studentSchema.js');
+const Subject = require('../models/subjectSchema.js');
+
+const studentRegister = async (req, res) => {
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPass = await bcrypt.hash(req.body.password, salt);
+
+        const existingStudent = await Student.findOne({
+            rollNum: req.body.rollNum,
+            school: req.body.adminID,
+            sclassName: req.body.sclassName,
+        });
+
+        if (existingStudent) {
+            res.send({ message: 'Roll Number already exists' });
+        }
+        else {
+            const student = new Student({
+                ...req.body,
+                school: req.body.adminID,
+                password: hashedPass
+            });
+
+            let result = await student.save();
+
+            result.password = undefined;
+            res.send(result);
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const studentLogIn = async (req, res) => {
+    try {
+        let student = await Student.findOne({ rollNum: req.body.rollNum, name: req.body.studentName });
+        if (student) {
+            const validated = await bcrypt.compare(req.body.password, student.password);
+            if (validated) {
+                student = await student.populate("school", "schoolName")
+                student = await student.populate("sclassName", "sclassName")
+                student.password = undefined;
+                student.examResult = undefined;
+                student.attendance = undefined;
+                res.send(student);
+            } else {
+                res.send({ message: "Invalid password" });
+            }
+        } else {
+            res.send({ message: "Student not found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const getStudents = async (req, res) => {
+    try {
+        let students = await Student.find({ school: req.params.id }).populate("sclassName", "sclassName");
+        if (students.length > 0) {
+            let modifiedStudents = students.map((student) => {
+                return { ...student._doc, password: undefined };
+            });
+            res.send(modifiedStudents);
+        } else {
+            res.send({ message: "No students found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const getStudentDetail = async (req, res) => {
+    try {
+        let student = await Student.findById(req.params.id)
+            .populate("school", "schoolName")
+            .populate("sclassName", "sclassName")
+            .populate("examResult.subName", "subName")
+            .populate("attendance.subName", "subName sessions");
+        if (student) {
+            student.password = undefined;
+            res.send(student);
+        }
+        else {
+            res.send({ message: "No student found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteStudent = async (req, res) => {
+    try {
+        const result = await Student.findByIdAndDelete(req.params.id)
+        res.send(result)
+    } catch (error) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteStudents = async (req, res) => {
+    try {
+        const result = await Student.deleteMany({ school: req.params.id })
+        if (result.deletedCount === 0) {
+            res.send({ message: "No students found to delete" })
+        } else {
+            res.send(result)
+        }
+    } catch (error) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteStudentsByClass = async (req, res) => {
+    try {
+        const result = await Student.deleteMany({ sclassName: req.params.id })
+        if (result.deletedCount === 0) {
+            res.send({ message: "No students found to delete" })
+        } else {
+            res.send(result)
+        }
+    } catch (error) {
+        res.status(500).json(err);
+    }
+}
+
+const updateStudent = async (req, res) => {
+    try {
+        if (req.body.password) {
+            const salt = await bcrypt.genSalt(10)
+            res.body.password = await bcrypt.hash(res.body.password, salt)
+        }
+        let result = await Student.findByIdAndUpdate(req.params.id,
+            { $set: req.body },
+            { new: true })
+
+        result.password = undefined;
+        res.send(result)
+    } catch (error) {
+        res.status(500).json(error);
+    }
+}
+
+const updateExamResult = async (req, res) => {
+    const { subName, marksObtained } = req.body;
+
+    try {
+        const student = await Student.findById(req.params.id);
+
+        if (!student) {
+            return res.send({ message: 'Student not found' });
+        }
+
+        const existingResult = student.examResult.find(
+            (result) => result.subName.toString() === subName
+        );
+
+        if (existingResult) {
+            existingResult.marksObtained = marksObtained;
+        } else {
+            student.examResult.push({ subName, marksObtained });
+        }
+
+        const result = await student.save();
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const studentAttendance = async (req, res) => {
+    const { subName, status, date } = req.body;
+
+    try {
+        const student = await Student.findById(req.params.id);
+
+        if (!student) {
+            return res.send({ message: 'Student not found' });
+        }
+
+        const subject = await Subject.findById(subName);
+
+        const existingAttendance = student.attendance.find(
+            (a) =>
+                a.date.toDateString() === new Date(date).toDateString() &&
+                a.subName.toString() === subName
+        );
+
+        if (existingAttendance) {
+            existingAttendance.status = status;
+        } else {
+            // Check if the student has already attended the maximum number of sessions
+            const attendedSessions = student.attendance.filter(
+                (a) => a.subName.toString() === subName
+            ).length;
+
+            if (attendedSessions >= subject.sessions) {
+                return res.send({ message: 'Maximum attendance limit reached' });
+            }
+
+            student.attendance.push({ date, status, subName });
+        }
+
+        const result = await student.save();
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const clearAllStudentsAttendanceBySubject = async (req, res) => {
+    const subName = req.params.id;
+
+    try {
+        const result = await Student.updateMany(
+            { 'attendance.subName': subName },
+            { $pull: { attendance: { subName } } }
+        );
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const clearAllStudentsAttendance = async (req, res) => {
+    const schoolId = req.params.id
+
+    try {
+        const result = await Student.updateMany(
+            { school: schoolId },
+            { $set: { attendance: [] } }
+        );
+
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const removeStudentAttendanceBySubject = async (req, res) => {
+    const studentId = req.params.id;
+    const subName = req.body.subId
+
+    try {
+        const result = await Student.updateOne(
+            { _id: studentId },
+            { $pull: { attendance: { subName: subName } } }
+        );
+
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+
+const removeStudentAttendance = async (req, res) => {
+    const studentId = req.params.id;
+
+    try {
+        const result = await Student.updateOne(
+            { _id: studentId },
+            { $set: { attendance: [] } }
+        );
+
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+
+module.exports = {
+    studentRegister,
+    studentLogIn,
+    getStudents,
+    getStudentDetail,
+    deleteStudents,
+    deleteStudent,
+    updateStudent,
+    studentAttendance,
+    deleteStudentsByClass,
+    updateExamResult,
+
+    clearAllStudentsAttendanceBySubject,
+    clearAllStudentsAttendance,
+    removeStudentAttendanceBySubject,
+    removeStudentAttendance,
+};
+
+
+const Subject = require('../models/subjectSchema.js');
+const Teacher = require('../models/teacherSchema.js');
+const Student = require('../models/studentSchema.js');
+
+const subjectCreate = async (req, res) => {
+    try {
+        const subjects = req.body.subjects.map((subject) => ({
+            subName: subject.subName,
+            subCode: subject.subCode,
+            sessions: subject.sessions,
+        }));
+
+        const existingSubjectBySubCode = await Subject.findOne({
+            'subjects.subCode': subjects[0].subCode,
+            school: req.body.adminID,
+        });
+
+        if (existingSubjectBySubCode) {
+            res.send({ message: 'Sorry this subcode must be unique as it already exists' });
+        } else {
+            const newSubjects = subjects.map((subject) => ({
+                ...subject,
+                sclassName: req.body.sclassName,
+                school: req.body.adminID,
+            }));
+
+            const result = await Subject.insertMany(newSubjects);
+            res.send(result);
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const allSubjects = async (req, res) => {
+    try {
+        let subjects = await Subject.find({ school: req.params.id })
+            .populate("sclassName", "sclassName")
+        if (subjects.length > 0) {
+            res.send(subjects)
+        } else {
+            res.send({ message: "No subjects found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const classSubjects = async (req, res) => {
+    try {
+        let subjects = await Subject.find({ sclassName: req.params.id })
+        if (subjects.length > 0) {
+            res.send(subjects)
+        } else {
+            res.send({ message: "No subjects found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const freeSubjectList = async (req, res) => {
+    try {
+        let subjects = await Subject.find({ sclassName: req.params.id, teacher: { $exists: false } });
+        if (subjects.length > 0) {
+            res.send(subjects);
+        } else {
+            res.send({ message: "No subjects found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const getSubjectDetail = async (req, res) => {
+    try {
+        let subject = await Subject.findById(req.params.id);
+        if (subject) {
+            subject = await subject.populate("sclassName", "sclassName")
+            subject = await subject.populate("teacher", "name")
+            res.send(subject);
+        }
+        else {
+            res.send({ message: "No subject found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+}
+
+const deleteSubject = async (req, res) => {
+    try {
+        const deletedSubject = await Subject.findByIdAndDelete(req.params.id);
+
+        // Set the teachSubject field to null in teachers
+        await Teacher.updateOne(
+            { teachSubject: deletedSubject._id },
+            { $unset: { teachSubject: "" }, $unset: { teachSubject: null } }
+        );
+
+        // Remove the objects containing the deleted subject from students' examResult array
+        await Student.updateMany(
+            {},
+            { $pull: { examResult: { subName: deletedSubject._id } } }
+        );
+
+        // Remove the objects containing the deleted subject from students' attendance array
+        await Student.updateMany(
+            {},
+            { $pull: { attendance: { subName: deletedSubject._id } } }
+        );
+
+        res.send(deletedSubject);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const deleteSubjects = async (req, res) => {
+    try {
+        const deletedSubjects = await Subject.deleteMany({ school: req.params.id });
+
+        // Set the teachSubject field to null in teachers
+        await Teacher.updateMany(
+            { teachSubject: { $in: deletedSubjects.map(subject => subject._id) } },
+            { $unset: { teachSubject: "" }, $unset: { teachSubject: null } }
+        );
+
+        // Set examResult and attendance to null in all students
+        await Student.updateMany(
+            {},
+            { $set: { examResult: null, attendance: null } }
+        );
+
+        res.send(deletedSubjects);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const deleteSubjectsByClass = async (req, res) => {
+    try {
+        const deletedSubjects = await Subject.deleteMany({ sclassName: req.params.id });
+
+        // Set the teachSubject field to null in teachers
+        await Teacher.updateMany(
+            { teachSubject: { $in: deletedSubjects.map(subject => subject._id) } },
+            { $unset: { teachSubject: "" }, $unset: { teachSubject: null } }
+        );
+
+        // Set examResult and attendance to null in all students
+        await Student.updateMany(
+            {},
+            { $set: { examResult: null, attendance: null } }
+        );
+
+        res.send(deletedSubjects);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+
+module.exports = { subjectCreate, freeSubjectList, classSubjects, getSubjectDetail, deleteSubjectsByClass, deleteSubjects, deleteSubject, allSubjects };
+
+const bcrypt = require('bcrypt');
+const Teacher = require('../models/teacherSchema.js');
+const Subject = require('../models/subjectSchema.js');
+
+const teacherRegister = async (req, res) => {
+    const { name, email, password, role, school, teachSubject, teachSclass } = req.body;
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPass = await bcrypt.hash(password, salt);
+
+        const teacher = new Teacher({ name, email, password: hashedPass, role, school, teachSubject, teachSclass });
+
+        const existingTeacherByEmail = await Teacher.findOne({ email });
+
+        if (existingTeacherByEmail) {
+            res.send({ message: 'Email already exists' });
+        }
+        else {
+            let result = await teacher.save();
+            await Subject.findByIdAndUpdate(teachSubject, { teacher: teacher._id });
+            result.password = undefined;
+            res.send(result);
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const teacherLogIn = async (req, res) => {
+    try {
+        let teacher = await Teacher.findOne({ email: req.body.email });
+        if (teacher) {
+            const validated = await bcrypt.compare(req.body.password, teacher.password);
+            if (validated) {
+                teacher = await teacher.populate("teachSubject", "subName sessions")
+                teacher = await teacher.populate("school", "schoolName")
+                teacher = await teacher.populate("teachSclass", "sclassName")
+                teacher.password = undefined;
+                res.send(teacher);
+            } else {
+                res.send({ message: "Invalid password" });
+            }
+        } else {
+            res.send({ message: "Teacher not found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const getTeachers = async (req, res) => {
+    try {
+        let teachers = await Teacher.find({ school: req.params.id })
+            .populate("teachSubject", "subName")
+            .populate("teachSclass", "sclassName");
+        if (teachers.length > 0) {
+            let modifiedTeachers = teachers.map((teacher) => {
+                return { ...teacher._doc, password: undefined };
+            });
+            res.send(modifiedTeachers);
+        } else {
+            res.send({ message: "No teachers found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+const getTeacherDetail = async (req, res) => {
+    try {
+        let teacher = await Teacher.findById(req.params.id)
+            .populate("teachSubject", "subName sessions")
+            .populate("school", "schoolName")
+            .populate("teachSclass", "sclassName")
+        if (teacher) {
+            teacher.password = undefined;
+            res.send(teacher);
+        }
+        else {
+            res.send({ message: "No teacher found" });
+        }
+    } catch (err) {
+        res.status(500).json(err);
+    }
+}
+
+const updateTeacherSubject = async (req, res) => {
+    const { teacherId, teachSubject } = req.body;
+    try {
+        const updatedTeacher = await Teacher.findByIdAndUpdate(
+            teacherId,
+            { teachSubject },
+            { new: true }
+        );
+
+        await Subject.findByIdAndUpdate(teachSubject, { teacher: updatedTeacher._id });
+
+        res.send(updatedTeacher);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const deleteTeacher = async (req, res) => {
+    try {
+        const deletedTeacher = await Teacher.findByIdAndDelete(req.params.id);
+
+        await Subject.updateOne(
+            { teacher: deletedTeacher._id, teacher: { $exists: true } },
+            { $unset: { teacher: 1 } }
+        );
+
+        res.send(deletedTeacher);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const deleteTeachers = async (req, res) => {
+    try {
+        const deletionResult = await Teacher.deleteMany({ school: req.params.id });
+
+        const deletedCount = deletionResult.deletedCount || 0;
+
+        if (deletedCount === 0) {
+            res.send({ message: "No teachers found to delete" });
+            return;
+        }
+
+        const deletedTeachers = await Teacher.find({ school: req.params.id });
+
+        await Subject.updateMany(
+            { teacher: { $in: deletedTeachers.map(teacher => teacher._id) }, teacher: { $exists: true } },
+            { $unset: { teacher: "" }, $unset: { teacher: null } }
+        );
+
+        res.send(deletionResult);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const deleteTeachersByClass = async (req, res) => {
+    try {
+        const deletionResult = await Teacher.deleteMany({ sclassName: req.params.id });
+
+        const deletedCount = deletionResult.deletedCount || 0;
+
+        if (deletedCount === 0) {
+            res.send({ message: "No teachers found to delete" });
+            return;
+        }
+
+        const deletedTeachers = await Teacher.find({ sclassName: req.params.id });
+
+        await Subject.updateMany(
+            { teacher: { $in: deletedTeachers.map(teacher => teacher._id) }, teacher: { $exists: true } },
+            { $unset: { teacher: "" }, $unset: { teacher: null } }
+        );
+
+        res.send(deletionResult);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+
+const teacherAttendance = async (req, res) => {
+    const { status, date } = req.body;
+
+    try {
+        const teacher = await Teacher.findById(req.params.id);
+
+        if (!teacher) {
+            return res.send({ message: 'Teacher not found' });
+        }
+
+        const existingAttendance = teacher.attendance.find(
+            (a) =>
+                a.date.toDateString() === new Date(date).toDateString()
+        );
+
+        if (existingAttendance) {
+            existingAttendance.status = status;
+        } else {
+            teacher.attendance.push({ date, status });
+        }
+
+        const result = await teacher.save();
+        return res.send(result);
+    } catch (error) {
+        res.status(500).json(error)
+    }
+};
+
+module.exports = {
+    teacherRegister,
+    teacherLogIn,
+    getTeachers,
+    getTeacherDetail,
+    updateTeacherSubject,
+    deleteTeacher,
+    deleteTeachers,
+    deleteTeachersByClass,
+    teacherAttendance
+};
