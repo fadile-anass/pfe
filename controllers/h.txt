@@ -1,4 +1,5 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+
 const Admin = require('../models/adminSchema.js');
 const Sclass = require('../models/sclassSchema.js');
 const Student = require('../models/studentSchema.js');
@@ -349,7 +350,8 @@ const deleteNotices = async (req, res) => {
 
 module.exports = { noticeCreate, noticeList, updateNotice, deleteNotice, deleteNotices };
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+
 const Student = require('../models/studentSchema.js');
 const Subject = require('../models/subjectSchema.js');
 
@@ -807,7 +809,8 @@ const deleteSubjectsByClass = async (req, res) => {
 
 module.exports = { subjectCreate, freeSubjectList, classSubjects, getSubjectDetail, deleteSubjectsByClass, deleteSubjects, deleteSubject, allSubjects };
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+
 const Teacher = require('../models/teacherSchema.js');
 const Subject = require('../models/subjectSchema.js');
 
